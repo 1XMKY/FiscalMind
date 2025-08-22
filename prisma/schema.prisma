@@ -1,0 +1,125 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int              @id @default(autoincrement())
+  email          String           @unique
+  name           String?
+  image          String?
+  emailVerified  DateTime?
+  passwordHash   String?
+  createdAt      DateTime         @default(now())
+
+  accounts       Account[]
+  sessions       Session[]
+
+  taxProfile     TaxProfile?
+  credentials    CredentialSAT[]
+  cfdis          CFDI[]
+  expenses       Expense[]
+  declarations   Declaration[]
+}
+
+model Account {
+  id                Int     @id @default(autoincrement())
+  userId            Int
+  type              String
+  provider          String
+  providerAccountId String
+
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           Int      @id @default(autoincrement())
+  sessionToken String   @unique
+  userId       Int
+  expires      DateTime
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model TaxProfile {
+  id              Int     @id @default(autoincrement())
+  userId          Int     @unique
+  rfc             String
+  regimen         String
+  actividad       String
+  defaultPayment  String
+
+  user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CredentialSAT {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  type        String   // CIEC | FIEL
+  status      String   // connected | invalid | pending
+  lastSyncAt  DateTime?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CFDI {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  uuid        String   @unique
+  type        String   // E | R
+  emisor      String
+  receptor    String
+  fecha       DateTime
+  total       Float
+  impuestos   Float
+  xmlRaw      String
+  parsedJson  Json
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  description String
+  amount      Float
+  date        DateTime
+  source      String   // ticket | físico | transferencia
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Declaration {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  period        String   // YYYY-MM
+  iva           Float
+  isr           Float
+  retentions    Float
+  status        String   // draft | sent | paid
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
